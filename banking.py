@@ -8,28 +8,37 @@ class SBS:
 
     def create_account(self):
         while True:
-            can = randint(0000000000, 9999999999)  # customer account number (CAN)
+            can = str(randint(0, 999999999)).rjust(9, '0')  # customer account number (CAN)
             if can in self.cans:
                 continue
             else:
                 break
         self.cans.append(can)
-        card_number = 4000000000000000 + can
-        card_pin = randint(0000, 9999)
-        card_pin = (0000 + card_pin)
+        card_number = "400000" + can
+        card_number += self.checksum(card_number)
+        card_pin = str(randint(0, 9999)).rjust(4, '0')
         self.cards[card_number] = card_pin
-        print("Your card has been created")
-        print("Your card number:")
-        print(card_number)
-        print("Your card PIN:")
-        print(f"{card_pin}\n")
+        print(f"Your card has been created\nYour card number:\n{card_number}\nYour card PIN:\n{card_pin}\n")
+
+    @staticmethod
+    def checksum(card_number):
+        odd = 1
+        sum = 0
+        for char in card_number:
+            char = int(char)
+            if odd % 2 != 0:
+                char *= 2
+                if char > 9:
+                    char -= 9
+            odd += 1
+            sum += char
+        return "0" if sum % 10 == 0 else str(10 - sum % 10)
 
     def login(self):
         print("Enter your card number:")
-        card_number = int(input(">"))
+        card_number = input(">")
         print("Enter your PIN:")
-        card_pin = int(input(">"))
-
+        card_pin = input(">")
         if card_number in self.cards:
             if self.cards[card_number] == card_pin:
                 print("\nYou have successfully logged in!\n")

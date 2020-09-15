@@ -1,23 +1,63 @@
+import sqlite3
 from random import randint
 
 
 class SBS:
-    def __init__(self):
-        self.cards = {}
-        self.cans = []
+    @staticmethod
+    def create_table():
+        with sqlite3.connect("card.s3db") as conn:
+            cur = conn.cursor()
+            cur.execute("""CREATE TABLE IF NOT EXISTS card(
+                        id INTEGER,
+                        number TEXT, 
+                        pin TEXT,
+                        balance INTEGER DEFAULT 0);""")
+            conn.commit()
 
-    def create_account(self):
+    @staticmethod
+    def insert_values(number, pin, balance):
+        with sqlite3.connect("card.s3db") as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO card (number, pin, balance) VALUES (?, ?, ?);", (number, pin, balance))
+            conn.commit()
+
+    @staticmethod
+    def check_number(number):
+        with sqlite3.connect("card.s3db") as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT number FROM card WHERE number = ?;", (number,))
+            result = bool(cur.fetchone())
+            conn.commit()
+            return result
+
+    @staticmethod
+    def check_login(number, pin):
+        with sqlite3.connect("card.s3db") as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT number FROM card WHERE number = ? AND pin = ?;", (number, pin))
+            result = bool(cur.fetchone())
+            conn.commit()
+            return result
+
+    def create_card_number(self):
         while True:
-            can = str(randint(0, 999999999)).rjust(9, '0')  # customer account number (CAN)
-            if can in self.cans:
+            card_number = "400000" + str(randint(0, 999999999)).rjust(9, '0')
+            card_number += self.checksum(card_number)
+            if self.check_number(card_number):
                 continue
             else:
                 break
-        self.cans.append(can)
-        card_number = "400000" + can
-        card_number += self.checksum(card_number)
+        return card_number
+
+    @staticmethod
+    def create_card_pin():
         card_pin = str(randint(0, 9999)).rjust(4, '0')
-        self.cards[card_number] = card_pin
+        return card_pin
+
+    def create_account(self):
+        card_number = self.create_card_number()
+        card_pin = self.create_card_pin()
+        self.insert_values(card_number, card_pin, 0)
         print(f"Your card has been created\nYour card number:\n{card_number}\nYour card PIN:\n{card_pin}\n")
 
     @staticmethod
@@ -39,8 +79,8 @@ class SBS:
         card_number = input(">")
         print("Enter your PIN:")
         card_pin = input(">")
-        if card_number in self.cards:
-            if self.cards[card_number] == card_pin:
+        if self.check_number(card_number):
+            if self.check_login(card_number, card_pin):
                 print("\nYou have successfully logged in!\n")
                 self.logged_in()
             else:
@@ -63,6 +103,7 @@ class SBS:
                 exit()
 
     def program(self):
+        self.create_table()
         while True:
             print("1. Create an account\n2. Log into account\n0. Exit")
             user_input = int(input(">"))

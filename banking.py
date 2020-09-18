@@ -22,6 +22,55 @@ class SBS:
             conn.commit()
 
     @staticmethod
+    def balance(number):
+        with sqlite3.connect("card.s3db") as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT balance FROM card WHERE number = ?;", (number,))
+            result = cur.fetchone()
+            print(result[0])
+            conn.commit()
+
+    @staticmethod
+    def add_income(number):
+        balance = int(input("Enter income:\n>"))
+        with sqlite3.connect("card.s3db") as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE card SET balance = balance + ? WHERE number = ?;", (balance, number))
+            conn.commit()
+
+    @staticmethod
+    def close_account(number):
+        with sqlite3.connect("card.s3db") as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM card WHERE number = ?", (number,))
+            conn.commit()
+
+    def do_transfer(self, number):
+        target_number = input("Transfer\nEnter card number:\n>")
+        if target_number == number:
+            print("You can't transfer money to the same account!\n")
+            return
+        if target_number[-1:] != self.checksum(target_number[:-1]):
+            print("Probably you made a mistake in the card number. Please try again!\n")
+            return
+        if self.check_number(target_number) is False:
+            print("Such a card does not exist.\n")
+            return
+        transfer_balance = int(input("Enter how much money you want to transfer:\n>"))
+        print()
+        with sqlite3.connect("card.s3db") as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT balance FROM card WHERE balance > ? AND number = ?;", (transfer_balance, number))
+            result = bool(cur.fetchone())
+            if result is False:
+                print("Not enough money!")
+                return
+            cur.execute("UPDATE card SET balance = balance + ? WHERE number = ?;", (transfer_balance, target_number))
+            conn.commit()
+            cur.execute("UPDATE card SET balance = balance - ? WHERE number = ?;", (transfer_balance, number))
+            conn.commit()
+
+    @staticmethod
     def check_number(number):
         with sqlite3.connect("card.s3db") as conn:
             cur = conn.cursor()
@@ -82,24 +131,33 @@ class SBS:
         if self.check_number(card_number):
             if self.check_login(card_number, card_pin):
                 print("\nYou have successfully logged in!\n")
-                self.logged_in()
+                self.logged_in(card_number)
             else:
                 print("\nWrong card number or PIN!\n")
         else:
             print("\nWrong card number or PIN!\n")
 
-    @staticmethod
-    def logged_in():
+    def logged_in(self, number):
         while True:
-            print("1. Balance\n2. Log out\n0. Exit")
+            print("1. Balance\n2. Add income\n3. Do transfer\n4. Close account\n5. Log out\n0. Exit")
             user_input = int(input(">"))
             print()
-            if user_input == 1:
-                print(f"Balance: 0\n")
-            elif user_input == 2:
+            if user_input == 1:  # 1. Balance
+                self.balance(number)
+                print()
+            elif user_input == 2:  # 2. Add income
+                self.add_income(number)
+                print("Income was added!\n")
+            elif user_input == 3:  # 3. Do transfer
+                self.do_transfer(number)
+            elif user_input == 4:  # 4. Close account
+                self.close_account(number)
+                print("The account has been closed!\n")
+                break
+            elif user_input == 5:  # 5. Log out
                 print("You have successfully logged out!\n")
                 break
-            elif user_input == 0:
+            elif user_input == 0:  # 0. Exit
                 exit()
 
     def program(self):
